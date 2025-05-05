@@ -21,9 +21,16 @@ Please upload the **Packing List** to begin.
 """)
 
 def login():
-    password = st.text_input("Enter password:", type="password")
-    if password != "mf123":
-        st.warning("Wrong password")
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+
+    if not st.session_state["authenticated"]:
+        password = st.text_input("Enter password:", type="password")
+        if password == "mf123":
+            st.session_state["authenticated"] = True
+            st.experimental_rerun()
+        elif password:
+            st.warning("Wrong password")
         st.stop()
 
 login()
