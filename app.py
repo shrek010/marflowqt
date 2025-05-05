@@ -26,7 +26,7 @@ def login():
 
     if not st.session_state["authenticated"]:
         password = st.text_input("Enter password:", type="password")
-        if password == "mf123":
+        if password == "mfl123":
             st.session_state["authenticated"] = True
             st.rerun()
         elif password:
