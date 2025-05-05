@@ -3,11 +3,11 @@
 
 import streamlit as st
 import pandas as pd
-from parsers.packaging_list_parser import parse_packaging_list
-from parsers.coa_parser import parse_certificate_of_analysis
-from validators.match_coa_to_packing_list import validate_against_packaging_list
-from parsers.sterilization_cert import parse_sterilization_certificate  
-from validators.validate_sc import validate_sc_against_sources
+from packaging_list_parser import parse_packaging_list
+from coa_parser import parse_certificate_of_analysis
+from match_coa_to_packing_list import validate_against_packaging_list
+from sterilization_cert import parse_sterilization_certificate  
+from validate_sc import validate_sc_against_sources
 import smtplib
 from email.message import EmailMessage
 from io import StringIO
