@@ -28,7 +28,7 @@ def login():
         password = st.text_input("Enter password:", type="password")
         if password == "mf123":
             st.session_state["authenticated"] = True
-            st.experimental_rerun()
+            st.rerun()
         elif password:
             st.warning("Wrong password")
         st.stop()
