@@ -192,7 +192,7 @@ if "packaging_list" in st.session_state:
         st.markdown("## 📋 Client Format Final Table")
         st.dataframe(final_client_format, use_container_width=True)
         st.download_button(
-            label="⬇️ Download Final Client Report as CSV",
+            label="⬇️ Download Report as CSV",
             data=final_client_format.to_csv(index=False),
             file_name="final_client_report.csv",
             mime="text/csv")
@@ -228,7 +228,7 @@ if "packaging_list" in st.session_state:
 
         # Streamlit download button
         st.download_button(
-            label="⬇️ Download Final Client Report as Excel",
+            label="⬇️ Download Final Report as Excel",
             data=excel_buffer.getvalue(),
             file_name="final_client_report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
