@@ -13,6 +13,7 @@ from email.message import EmailMessage
 from io import StringIO
 
 
+
 st.set_page_config(page_title="QC Validator", layout="centered")
 st.title("📦 Marflow QC Validator Tool")
 st.markdown("""
@@ -160,66 +161,81 @@ def send_email_report(to_email, concise_df, sender_email, sender_password, smtp_
     msg["From"] = sender_email
     msg["To"] = to_email
     msg.set_content("Please find attached the concise mismatch report from Marflow QC Validator.")
-
-    # Convert DataFrame to CSV in memory
     csv_buffer = StringIO()
     concise_df.to_csv(csv_buffer, index=False)
     csv_bytes = csv_buffer.getvalue().encode('utf-8')
-
-    # Attach CSV
     msg.add_attachment(csv_bytes, maintype="application", subtype="csv", filename="mismatch_report.csv")
 
-    # Send email
     with smtplib.SMTP(smtp_server, smtp_port) as smtp:
         smtp.starttls()
         smtp.login(sender_email, sender_password)
         smtp.send_message(msg)
-
-                
-                
+     
 # 📌 Build a concise mismatch-only table from both COA and SC
-# ✅ Only show concise mismatch table if both COA and SC results exist
+# 📌 Build final merged table in client-desired format
 if "packaging_list" in st.session_state:
     if 'final_coa_table' in locals() and 'combined_validation' in locals():
-
-        # COA mismatches
-        coa_mismatches = final_coa_table[final_coa_table["Match"] == "❌"].copy()
-        coa_mismatches["Source"] = "COA"
-        coa_mismatches.rename(columns={
-            "Batch No": "Batch No",
-            "Field": "Field",
-            "Expected Value": "Expected",
-            "COA Value": "Found",
-            "COA File": "File"
-        }, inplace=True)
-        coa_mismatches = coa_mismatches[["Batch No", "Field", "Expected", "Found", "Source", "File"]]
-
-        # SC mismatches
-        sc_mismatches = combined_validation[combined_validation["Validation"] == "❌"].copy()
-        sc_mismatches["Source"] = "SC"
-        sc_mismatches.rename(columns={
-            "Batch No": "Batch No",
-            "Field": "Field",
-            "Expected Value": "Expected",
-            "SC Value": "Found",
-            "SC Certificate": "File"
-        }, inplace=True)
-        sc_mismatches = sc_mismatches[["Batch No", "Field", "Expected", "Found", "Source", "File"]]
-
-        # Combine
-        concise_mismatches = pd.concat([coa_mismatches, sc_mismatches], ignore_index=True)
-
-        # 📊 Display in Streamlit
-        with st.expander("🔍 Concise Mismatch Summary Table", expanded=True):
-            st.dataframe(concise_mismatches, use_container_width=True)
-
-        # 📥 Optional: Download
+        ref_lookup = st.session_state["packaging_list"].set_index("Batch No")["Ref Code"].to_dict()
+        coa_data = final_coa_table[final_coa_table["Match"] == "❌"].copy()
+        coa_data["Ref code"] = coa_data["Batch No"].map(ref_lookup).fillna("Not mention")
+        coa_data["COA"] = coa_data["Field"] + ": " + coa_data["COA Value"].astype(str)
+        coa_data["Packing list"] = coa_data["Field"] + ": " + coa_data["Expected Value"].astype(str)
+        coa_data["EtO Sterilization certificate"] = "--"
+        coa_data = coa_data[["Ref code", "Batch No", "EtO Sterilization certificate", "COA", "Packing list"]]
+        sc_data = combined_validation[combined_validation["Validation"] == "❌"].copy()
+        sc_data["Ref code"] = sc_data["Batch No"].map(ref_lookup).fillna("Not mention")
+        sc_data["EtO Sterilization certificate"] = sc_data.apply(lambda row: f"{row['Field']}: {row['SC Value'].replace('❌','').replace('✅','').strip()}", axis=1)
+        sc_data["Packing list"] = sc_data.apply(lambda row: f"{row['Field']}: {row['Expected Value'].replace('❌','').replace('✅','').strip()}", axis=1)
+        sc_data["COA"] = "--"
+        sc_data = sc_data[["Ref code", "Batch No", "EtO Sterilization certificate", "COA", "Packing list"]]
+        final_client_format = pd.concat([coa_data, sc_data], ignore_index=True)
+        st.markdown("## 📋 Client Format Final Table")
+        st.dataframe(final_client_format, use_container_width=True)
         st.download_button(
-            label="⬇️ Download Concise Mismatch Table",
-            data=concise_mismatches.to_csv(index=False),
-            file_name="concise_mismatch_report.csv",
-            mime="text/csv"
+            label="⬇️ Download Final Client Report as CSV",
+            data=final_client_format.to_csv(index=False),
+            file_name="final_client_report.csv",
+            mime="text/csv")
+
+
+        from io import BytesIO
+        from openpyxl.styles import Font, Alignment
+        from openpyxl.utils.dataframe import dataframe_to_rows
+        from openpyxl import Workbook
+
+        # Create workbook and sheet
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Report"
+
+        # Add DataFrame rows to worksheet
+        for r_idx, row in enumerate(dataframe_to_rows(final_client_format, index=False, header=True), 1):
+            ws.append(row)
+            for c_idx, cell in enumerate(ws[r_idx], 1):
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+                if r_idx == 1:
+                    cell.font = Font(bold=True)
+
+        # Optional: Auto-adjust column widths
+        for column_cells in ws.columns:
+            length = max(len(str(cell.value)) if cell.value else 0 for cell in column_cells)
+            ws.column_dimensions[column_cells[0].column_letter].width = length + 3
+
+        # Save to in-memory buffer
+        excel_buffer = BytesIO()
+        wb.save(excel_buffer)
+        excel_buffer.seek(0)
+
+        # Streamlit download button
+        st.download_button(
+            label="⬇️ Download Final Client Report as Excel",
+            data=excel_buffer.getvalue(),
+            file_name="final_client_report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
+
+
         
         
 # # ✅ Show only if the concise table exists
@@ -238,5 +254,3 @@ if "packaging_list" in st.session_state:
 #                 mime="text/csv",
 #                 key="download_concise_mismatch"
 #             )
-
-          
