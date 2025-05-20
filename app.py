@@ -189,7 +189,7 @@ if "packaging_list" in st.session_state:
         sc_data["COA"] = "--"
         sc_data = sc_data[["Ref code", "Batch No", "EtO Sterilization certificate", "COA", "Packing list"]]
         final_client_format = pd.concat([coa_data, sc_data], ignore_index=True)
-        st.markdown("## 📋 Client Format Final Table")
+        st.markdown("## 📋 Final Table")
         st.dataframe(final_client_format, use_container_width=True)
         st.download_button(
             label="⬇️ Download Report as CSV",
